@@ -2,7 +2,8 @@
 import struct
 import sys
 from codecs import decode
-
+import matplotlib.pyplot as plt
+import os
 
 class PotIO:
 
@@ -10,8 +11,12 @@ class PotIO:
   test_fileName = "1.0test-GB1.pot"
   dev_filename = "001.pot"
   dev_characters = None
+  tag_data_dict = {} # {'tag_code':[sample_1,sample_2,...,]} , sample_n = [strokes_1,strokes_2,...], strokes_n = [v_1,v_2,...]
+  opt_file_dir = 'optFilesByTag'
   def __init__(self):
     self.characters = self.readFiles()
+    self.organizeByTag()
+    self.makeCharFile()
 
 
   def getSample(self,index):
@@ -25,7 +30,7 @@ class PotIO:
     characters = []
 
     position = 0
-    with open(self.train_filename, "rb") as f:
+    with open(self.dev_filename, "rb") as f:
 
       while True:
         print("{:,}".format(position))
@@ -72,11 +77,51 @@ class PotIO:
           else:
             stroke_samples.append(((struct.unpack("<H",next[0])[0],struct.unpack("<H",next[1])[0])))
             current_stroke_number = 0
-        characters.append(Sample(tag_code,tag,stroke_number,strokes_samples))
+
+        sample = Sample(tag_code,tag,stroke_number,strokes_samples)
+        sample.shrinkPixels()
+        characters.append(sample)
     return characters
 
+  def organizeByTag(self):
+    for char in self.characters:
+      if char.tag_code not in self.tag_data_dict.keys():
+        self.tag_data_dict[char.tag_code] = [[char.stroke_data]]
+      else:
+        self.tag_data_dict[char.tag_code].append(char.stroke_data)
+    #self.characters = None # Delete characters to save RAM
 
 
+  def makeCharFile(self):
+    # overview: tag $sample$sample
+    # for sample: #strokes#strokes
+    # for strokes: *stroke*stroke*stroke
+    # for stroke: !x,y!x,y
+
+    if not os.path.exists(self.opt_file_dir):
+      os.mkdir(self.opt_file_dir)
+      print("making optimized tag file directory")
+
+    if len(os.listdir(self.opt_file_dir)) == 0:
+      print("writing optimized tag files to optimized tag file directory")
+      for tagcode in self.tag_data_dict.keys():
+        content = tagcode
+        f = open(self.opt_file_dir+'/'+tagcode,'w')
+        for sample in self.tag_data_dict[tagcode]:
+          content += '$'
+          for strokes in sample:
+            content += '#'
+            for stroke in strokes:
+              content += '*'
+              for v in stroke:
+                content += '!'
+                try:
+                  content += str(v[0]) + ',' + str(v[1])
+                except:
+                  print("isjaodfim",v)
+        f.write(content)
+        f.close()
+      print("finished writing optimized tag files")
 
 
 
@@ -86,12 +131,28 @@ class Sample:
     self.tag_code= tag_code
     self.tag = tag
     self.stroke_number =stroke_number
-    self.stroke_data = stroke_data
+    self.stroke_data = stroke_data # strokes make up the character
     return
 
 
+  def show(self):
+    for stroke in self.stroke_data:
+      plt.plot([p[0] for p in stroke],[p[1] for p in stroke])
+    plt.show()
 
+  def shrinkPixels(self):
+    '''normalize the pixel values to a minimum of 0,
+    eg. (1234,2345) -> (34,45) so that the character has minimum coordinates of (0,_),(_,0)'''
+    minx = self.stroke_data[0][0][0]
+    maxy = 0
+    for strokes in self.stroke_data:
+      for stroke in strokes:
+        minx = min(minx,stroke[0])
+        maxy = max(maxy,stroke[1])
 
+    for strokes in self.stroke_data:
+      for s in range(len(strokes)):
+        strokes[s] = (strokes[s][0] - minx,maxy - strokes[s][1])
 
 
   def construct_image(self,stroke_number, stroke_data):

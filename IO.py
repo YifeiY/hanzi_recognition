@@ -9,10 +9,10 @@ class PotIO:
 
   train_filename = "1.0train-GB1.pot"
   test_fileName = "1.0test-GB1.pot"
-  dev_filename = "001.pot"
-  dev_characters = None
+
   tag_data_dict = {} # {'tag_code':[sample_1,sample_2,...,]} , sample_n = [strokes_1,strokes_2,...], strokes_n = [v_1,v_2,...]
   opt_file_dir = 'optFilesByTag'
+
   def __init__(self):
     self.characters = self.readFiles()
     self.organizeByTag()
@@ -30,7 +30,7 @@ class PotIO:
     characters = []
 
     position = 0
-    with open(self.dev_filename, "rb") as f:
+    with open(self.test_fileName, "rb") as f:
 
       while True:
         print("{:,}".format(position))
@@ -86,8 +86,9 @@ class PotIO:
   def organizeByTag(self):
     for char in self.characters:
       if char.tag_code not in self.tag_data_dict.keys():
-        self.tag_data_dict[char.tag_code] = [[char.stroke_data]]
+        self.tag_data_dict[char.tag_code] = [char.stroke_data]
       else:
+        #print(char.stroke_data)
         self.tag_data_dict[char.tag_code].append(char.stroke_data)
     #self.characters = None # Delete characters to save RAM
 
@@ -104,25 +105,45 @@ class PotIO:
 
     if len(os.listdir(self.opt_file_dir)) == 0:
       print("writing optimized tag files to optimized tag file directory")
+      print(self.tag_data_dict['0xd2d8'])
       for tagcode in self.tag_data_dict.keys():
         content = tagcode
         f = open(self.opt_file_dir+'/'+tagcode,'w')
         for sample in self.tag_data_dict[tagcode]:
           content += '$'
-          for strokes in sample:
+          for stroke in sample:
             content += '#'
-            for stroke in strokes:
-              content += '*'
-              for v in stroke:
-                content += '!'
-                try:
-                  content += str(v[0]) + ',' + str(v[1])
-                except:
-                  print("isjaodfim",v)
+            for v in stroke:
+              content += '!'
+              try:
+                content += str(v[0]) + ',' + str(v[1])
+              except Exception as e:
+                print(e,tagcode,sample)
         f.write(content)
         f.close()
       print("finished writing optimized tag files")
 
+  def readOptFiles(self):
+    dic = {}
+    filelist = []
+    for filename in filelist:
+
+      f = open(filename, 'r')
+      data = f.read()
+      temp = data.split('$')
+
+      tag_code = temp[0]
+      sample_arr = []
+
+      for sample in temp[1:]:
+        stroke_arr = []
+        for stroke in sample.split('#')[1:]:
+          v_arr = []
+          for v in stroke.split('!')[1:]:
+            v_arr.append([int(x) for x in v.split(',')])
+          stroke_arr.append(v_arr)
+        sample_arr.append(stroke_arr)
+      dic[filename] = sample_arr
 
 
 class Sample:

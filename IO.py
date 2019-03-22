@@ -1,7 +1,5 @@
 
 import struct
-import sys
-from codecs import decode
 import matplotlib.pyplot as plt
 import os
 
@@ -11,6 +9,12 @@ class PotIO:
   test_fileName = "1.0test-GB1.pot"
 
   tag_data_dict = {} # {'tag_code':[sample_1,sample_2,...,]} , sample_n = [strokes_1,strokes_2,...], strokes_n = [v_1,v_2,...]
+  # tag_data_dic is the data set itself, organized according to tag_code
+  # tag_data_dict['0x21'] should give you all the samples of !
+  # tag_data_dict['0x21'][0] gives you a sample (all the strokes) of one sample
+  # tag_data_dict['0x21'][0][0] gives you one stroke
+  # tag_data_dict['0x21'][0][0][0] gives you one vector from that stroke
+
   opt_file_dir = 'optFilesByTag'
 
   def __init__(self):
@@ -20,13 +24,12 @@ class PotIO:
 
 
   def getSample(self,index):
+    '''legacy, get a sample from sample pool'''
     return self.characters[index]
 
   def readFiles(self):
-    byte_order = sys.byteorder
+    '''read file, create internal representation of binary file data in ints'''
     print("reading files, please wait...")
-    test_data = []
-    #train_file = open(self.train_filename,'r')
     characters = []
 
     position = 0
@@ -84,16 +87,19 @@ class PotIO:
     return characters
 
   def organizeByTag(self):
+    '''transform the internal representation of the data to a dictionary organized by tag'''
     for char in self.characters:
       if char.tag_code not in self.tag_data_dict.keys():
         self.tag_data_dict[char.tag_code] = [char.stroke_data]
       else:
-        #print(char.stroke_data)
         self.tag_data_dict[char.tag_code].append(char.stroke_data)
     #self.characters = None # Delete characters to save RAM
 
 
   def makeCharFile(self):
+    '''put each character and its samples to files, prepare multi-thread reading
+    or partial loading of the data sets'''
+
     # overview: tag $sample$sample
     # for sample: #strokes#strokes
     # for strokes: *stroke*stroke*stroke
@@ -105,7 +111,6 @@ class PotIO:
 
     if len(os.listdir(self.opt_file_dir)) == 0:
       print("writing optimized tag files to optimized tag file directory")
-      print(self.tag_data_dict['0xd2d8'])
       for tagcode in self.tag_data_dict.keys():
         content = tagcode
         f = open(self.opt_file_dir+'/'+tagcode,'w')
@@ -124,6 +129,7 @@ class PotIO:
       print("finished writing optimized tag files")
 
   def readOptFiles(self):
+    '''read the optimized files'''
     dic = {}
     filelist = []
     for filename in filelist:
@@ -157,6 +163,7 @@ class Sample:
 
 
   def show(self):
+    '''plots the character using matplotlib'''
     for stroke in self.stroke_data:
       plt.plot([p[0] for p in stroke],[p[1] for p in stroke])
     plt.show()
@@ -174,7 +181,3 @@ class Sample:
     for strokes in self.stroke_data:
       for s in range(len(strokes)):
         strokes[s] = (strokes[s][0] - minx,maxy - strokes[s][1])
-
-
-  def construct_image(self,stroke_number, stroke_data):
-    return

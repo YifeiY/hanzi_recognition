@@ -2,10 +2,9 @@ import struct
 import matplotlib.pyplot as plt
 import os
 from time import time
-import shutil
-from parallel import Parallel
 import multiprocessing as mp
 import matplotlib
+from math import cosh
 
 import threading
 matplotlib.use("MacOSX")
@@ -15,9 +14,10 @@ opt_file_dir = 'optFilesByTag'
 img_file_dir = 'imgsByTag'
 train_filename = "1.0train-GB1.pot"
 test_fileName = "1.0test-GB1.pot"
-
+data_upper_bound = 5
 
 class PotIO:
+  ###OPT FILE RELATED FUNCTIONS ARE NOT IMPLEMENTED YET
 
   # {'tag_code':[sample_1,sample_2,...,]} , sample_n = [strokes_1,strokes_2,...], stroke_n = [v_1,v_2,...]
   # tag_data_dic is the data set itself, organized according to tag_code
@@ -30,7 +30,7 @@ class PotIO:
   test_dict = {}
 
   def __init__(self):
-    print("PotIO object instantiated, call readFiles() to input train and test set")
+    print("PotIO object instantiated, call readFiles() to input train and test set\n")
     return
 
   def getTrainTest(self):
@@ -57,7 +57,9 @@ class PotIO:
       global data_buffer
       characters = []
       '''read file, create internal representation of binary file data in ints'''
-      print("Decoding stroke files...")
+      print("Decoding",filename, "stroke files...\n"
+            "Data will be normalized\n"
+            "Redundant points in stroke will be removed\n")
       start = time()
 
       with open(filename, "rb") as f:
@@ -97,14 +99,17 @@ class PotIO:
 
           sample = Sample(tag_code, tag, stroke_number, strokes_samples)
           sample.shrinkPixels()
+          sample.normalize(128)
+          sample.removeRedundantPoints()
           characters.append(sample)
+
       print("Stroke file decoded in ", "%.3f" % (time() - start), "seconds.\n")
       return characters
 
     def organizeByTag(characters):
       tag_dict = {}
       '''transform the internal representation of the data to a dictionary organized by tag'''
-      print("Sorting data according to tags...")
+      print("Sorting data according to tags...\n")
       start = time()
       for char in characters:
         if char.tag_code not in tag_dict.keys():
@@ -118,12 +123,18 @@ class PotIO:
     test_chars = readFile(test_fileName)
     self.train_dict = organizeByTag(train_chars)
     self.test_dict = organizeByTag(test_chars)
-    print("train set stroke size:",len(self.train_dict.keys()))
-    print("test set stroke size:",len(self.test_dict.keys()))
+    print("train set character size:",len(self.train_dict.keys()))
+    print("test set character size:",len(self.test_dict.keys()))
 
     train_chars = None
     test_chars = None
 
+  def buildInternalRepresentations(self):
+    def buildInternalRepresentation(dic):
+      return
+
+    buildInternalRepresentation(self.train_dict)
+    buildInternalRepresentation(self.test_dict)
 
 
 
@@ -141,10 +152,10 @@ class PotIO:
     def makeOneOptFile(add_ons,tag_dict):
       if not os.path.exists(opt_file_dir + add_ons):
         os.mkdir(opt_file_dir + add_ons)
-        print("Optimized tag file directory made.")
+        print("Optimized tag file directory made.\n")
 
       if len(os.listdir(opt_file_dir + add_ons)) == 0:
-        print("Writing optimized tag files to optimized tag file directory...")
+        print("Writing optimized tag files to optimized tag file directory...\n")
         start = time()
         for tagcode in tag_dict.keys():
           content = tagcode
@@ -230,6 +241,8 @@ class PotIO:
 
 
 
+
+
 class Sample:
 
   def __init__(self,tag_code,tag,stroke_number,stroke_data):
@@ -250,11 +263,48 @@ class Sample:
     eg. (1234,2345) -> (34,45) so that the character has minimum coordinates of (0,_),(_,0)'''
     minx = self.stroke_data[0][0][0]
     maxy = 0
-    for strokes in self.stroke_data:
-      for stroke in strokes:
-        minx = min(minx,stroke[0])
-        maxy = max(maxy,stroke[1])
+    for stroke in self.stroke_data:
+      for v in stroke:
+        minx = min(minx,v[0])
+        maxy = max(maxy,v[1])
 
     for strokes in self.stroke_data:
       for s in range(len(strokes)):
         strokes[s] = (strokes[s][0] - minx,maxy - strokes[s][1])
+
+  def normalize(self,upper_bound):
+    bounds = [self.stroke_data[0][0][0],self.stroke_data[0][0][1]]
+    for stroke in self.stroke_data:
+      for v in stroke:
+        bounds = [max(bounds[0],v[0]),max(bounds[1],v[1])]
+    bound = max(bounds)
+    for stroke in self.stroke_data:
+      for i in range(len(stroke)):
+        stroke[i] = (stroke[i][0]/bound * upper_bound, stroke[i][1]/bound * upper_bound)
+
+  def removeRedundantPoints(self):
+    new_stroke_data = []
+    for stroke in self.stroke_data:
+      new_stroke = [stroke[0]]
+      # add the stroke if it only contains one point
+      if len(stroke) == 1:
+        new_stroke_data.append(new_stroke)
+        continue
+      if (new_stroke[-1][1] - stroke[1][1]) == 0: last_cos = 100
+      else:last_cos = - cosh((new_stroke[-1][0] - stroke[1][0]) / (new_stroke[-1][1] - stroke[1][1]))
+
+      for i in range(1,len(stroke)-1):
+        # save the stroke if it represents a large euclidean change
+        dx = new_stroke[-1][0] - stroke[i][0]
+        dy = new_stroke[-1][1] - stroke[i][1]
+        if dy == 0: this_cos = 100
+        else: this_cos = cosh(dx/dy)
+        if dx**2 + dy **2 > 100 or abs(this_cos - last_cos) > 0.2:
+          new_stroke.append(stroke[i])
+        last_cos = this_cos
+      new_stroke.append(stroke[-1])
+      for i in range(len(stroke)):
+        new_v = (int(stroke[i][0]), int(stroke[i][1]))
+        stroke[i] = new_v
+      new_stroke_data.append(new_stroke)
+    self.stroke_data = new_stroke_data

@@ -118,6 +118,9 @@ class PotIO:
     test_chars = readFile(test_fileName)
     self.train_dict = organizeByTag(train_chars)
     self.test_dict = organizeByTag(test_chars)
+    print("train set stroke size:",len(self.train_dict.keys()))
+    print("test set stroke size:",len(self.test_dict.keys()))
+
     train_chars = None
     test_chars = None
 
@@ -171,51 +174,58 @@ class PotIO:
     def readFileBundle(dir):
       manager = mp.Manager()
       dic = manager.dict()
-      dic[0] = 0
+      dic["broken"] = []
       filelist = os.listdir(dir)
       processes = []
-      filename = filelist[0]
-      p1 = mp.Process(target=readOneOptFile, args=(dir+"/",filename,dic,))
-      filename = filelist[1]
-      p1.start()
+      cpu_count = os.cpu_count()
+      list_size = len(filelist)
+      print("size of tags:",list_size)
+      batch_size = list_size//cpu_count + 1
+      end_point = 0
+      for i in range(0,len(filelist),batch_size):
+        filenames = filelist[i:i + batch_size]
+        end_point = i + batch_size
+        processes.append(mp.Process(target=readOneOptFile, args=(dir+"/",filenames,dic)))
+      processes.append(mp.Process(target=readOneOptFile, args=(dir+"/",filelist[end_point:list_size],dic)))
+      print(len(processes))
+      for p in processes[:2]:
+        p.start()
+      for p in processes[:2]:
+        p.join()
 
 
-      p1.join()
-      p2 = mp.Process(target=readOneOptFile, args=(dir + "/", filename, dic,))
-
-
-
-
-      print(dic)
 
 
 
 
 
-    def readOneOptFile(dir,filename,d):
-      print(filename,d)
+    def readOneOptFile(dir,filenames,d):
+      for filename in filenames:
+        f = open(dir + filename, 'r')
+        data = f.read()
+        temp = data.split('$')
 
-      f = open(dir + filename, 'r')
-      data = f.read()
-      temp = data.split('$')
+        tag_code = temp[0]
+        sample_arr = []
 
-      tag_code = temp[0]
-      sample_arr = []
+        for sample in temp[1:]:
+          stroke_arr = []
+          for stroke in sample.split('#')[1:]:
+            v_arr = []
+            for v in stroke.split('!')[1:]:
+              v_arr.append([int(x) for x in v.split(',')])
+            stroke_arr.append(v_arr)
+          sample_arr.append(stroke_arr)
+        try:
+          d[filename] = sample_arr
+        except:
 
-      for sample in temp[1:]:
-        stroke_arr = []
-        for stroke in sample.split('#')[1:]:
-          v_arr = []
-          for v in stroke.split('!')[1:]:
-            v_arr.append([int(x) for x in v.split(',')])
-          stroke_arr.append(v_arr)
-        sample_arr.append(stroke_arr)
-      print(sample_arr)
-      d['1'] = 1
-      print(d['1'])
+          print('filename is ',filename + '\n')
+          # d["broken"].append(filename)
 
-    #train_dict = readFileBundle(opt_file_dir + "Train")
-    test_dict = readFileBundle(opt_file_dir + "Test")
+    self.test_dict = readFileBundle(opt_file_dir + "Test")
+    #self.train_dict = readFileBundle(opt_file_dir + "Train")
+
     #return train_dict,test_dict
 
 

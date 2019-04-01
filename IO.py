@@ -18,6 +18,7 @@ data_upper_bound = 5
 
 class PotIO:
   ###OPT FILE RELATED FUNCTIONS ARE NOT IMPLEMENTED YET
+  ## Call readFiles() to input sets
 
   # {'tag_code':[sample_1,sample_2,...,]} , sample_n = [strokes_1,strokes_2,...], stroke_n = [v_1,v_2,...]
   # tag_data_dic is the data set itself, organized according to tag_code
@@ -52,7 +53,7 @@ class PotIO:
 
 
   def readFiles(self):
-
+    # read train and test data
     def readFile(filename):
       global data_buffer
       characters = []

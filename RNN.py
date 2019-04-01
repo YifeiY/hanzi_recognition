@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 from time import time
 tf.set_random_seed(1)
+from keras.layers import GRU
+from keras.models import Sequential
 from matplotlib import pyplot as plt
 
 class RNN():
@@ -14,6 +16,9 @@ class RNN():
 
   def __init__(self):
     return
+
+  def buildRNN(self):
+      return
 
   def buildInternalRepresentationsFromDic(self,train_dic,test_dic):
 

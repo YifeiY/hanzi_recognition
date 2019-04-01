@@ -117,7 +117,9 @@ class PotIO:
       return tag_dict
 
     train_chars = readFile(train_filename)
+    print("read",len(train_chars),"number of train characters")
     test_chars = readFile(test_fileName)
+    print("read",len(test_chars),"number of test characters")
     self.train_dict = organizeByTag(train_chars)
     self.test_dict = organizeByTag(test_chars)
     print("train set character size:",len(self.train_dict.keys()))

@@ -1,12 +1,14 @@
 import numpy as np
 import tensorflow as tf
-
+from time import time
 tf.set_random_seed(1)
-
+from matplotlib import pyplot as plt
 
 class RNN():
-  trainset = {}
-  testset = {}
+  train_set = []
+  test_set = []
+  test_labels = []
+  train_labels = []
 
   # dic['tag'] = [ Sample1: [stroke1: [TVs]]]
 
@@ -18,12 +20,10 @@ class RNN():
     def buildInternalRepresentation(dic):
       labels = []
       samples = []
-      iter = 1
+      print("number of keys in dic:",len(dic.keys()))
       for key in dic.keys():
-        iter += 1
-        print(iter)
         for sample in dic[key]:
-          labels.append(int(key, 16))
+          labels.append(key)
           new_strokes = []
           for stroke in sample:
             # [x,y,dx,dy,pen down, pen up]
@@ -35,15 +35,41 @@ class RNN():
                 c = stroke[i]
                 n = stroke[i + 1]
                 stroke_rep.append([int(c[0]),int(c[1]),int(n[0]-c[0]),int(n[1]-c[1]),0,0])
-            # pen down stroke
-            stroke_rep[0] = [int(stroke_rep[0][0]),int(stroke_rep[0][1]),int(stroke_rep[0][2]),int(stroke_rep[0][3]),1,stroke_rep[0][5]]
-            # pen up stroke
-            stroke_rep[-1] = [int(stroke_rep[0][0]),int(stroke_rep[0][1]),int(stroke_rep[0][2]),int(stroke_rep[0][3]),stroke_rep[0][4],1]
+              # pen down stroke
+              stroke_rep[0] = [int(stroke_rep[0][0]),int(stroke_rep[0][1]),int(stroke_rep[0][2]),int(stroke_rep[0][3]),1,stroke_rep[0][5]]
+              # pen up stroke
+              stroke_rep[-1] = [int(stroke_rep[0][0]),int(stroke_rep[0][1]),int(stroke_rep[0][2]),int(stroke_rep[0][3]),stroke_rep[0][4],1]
             new_strokes += stroke_rep
           samples.append(new_strokes)
-      print(np.array(samples).shape)
-      print(np.array(labels).shape)
-      return tf.data.Dataset.from_tensor_slices((np.array(samples),np.array(labels)))
+      return samples,labels
 
-    self.train_set = buildInternalRepresentation(train_dic)
-    self.testset = buildInternalRepresentation(test_dic)
+    self.train_set,self.train_labels = buildInternalRepresentation(train_dic)
+    self.test_set,self.test_labels = buildInternalRepresentation(test_dic)
+
+  def saveInternalRepresentationFiles(self):
+    start = time()
+    print('saving np files...')
+    np.save('trainset',self.train_set)
+    np.save('trainlabels',self.train_labels)
+    np.save('testset', self.test_set)
+    np.save('testlabel', self.test_labels)
+    print("4 np files saved in",time() - start,"seconds")
+
+  def loadInternalRepresentationFiles(self):
+    start = time()
+    print('reading np files...')
+    self.train_set = np.load("trainset.npy")
+    self.train_labels = np.load('trainlabels.npy')
+    self.test_set = np.load('testset.npy')
+    self.test_labels = np.load('testlabel.npy')
+    print("4 np files read in",time() - start,"seconds")
+
+  def show(self,i):
+    for stroke in self.trainset[i]:
+      if stroke [-2] == 1:
+        new_stroke = [[]]
+      if stroke [-1] == 1:
+        plt.plot([x[0] for x in new_stroke],[x[1] for x in new_stroke])
+      else:
+        new_stroke.append([stroke[0],stroke[1]])
+

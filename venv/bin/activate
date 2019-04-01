@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/yifei/OneDrive - Queen's University/2019 Winter/COGS 400/Hanzi Recognition/venv"
+VIRTUAL_ENV="/Users/yifei/OneDrive - Queen's University/2019 Winter/COGS 400/Handwriting Recognition/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

@@ -74,28 +74,25 @@ class PotIO:
             dword_code = bytes((dword_code[1], dword_code[0]))
           tag_code = struct.unpack(">H", dword_code)[0]
           f.read(2)
-          try:
-            tag = struct.pack('>H', tag_code).decode("gb2312")[0]
-          except:
-            print("rip")
-            f.read(sample_size - 2)
-            continue
+          # try:
+          tag = struct.pack('>H', tag_code).decode("gb2312")[0]
+          # except:
+          #   print("rip")
+          #   f.read(sample_size - 2)
+          #   continue
           tag_code = hex(tag_code)
           stroke_number = struct.unpack("<H", f.read(2))[0]
 
           strokes_samples = []
           stroke_samples = []
-          current_stroke_number = 0
           next = b'\x00'
           while next != (b'\xff\xff', b'\xff\xff'):
             next = (f.read(2), f.read(2))
             if next == (b'\xff\xff', b'\x00\x00'):
               strokes_samples.append(stroke_samples)
               stroke_samples = []
-              current_stroke_number += 1
             else:
               stroke_samples.append(((struct.unpack("<H", next[0])[0], struct.unpack("<H", next[1])[0])))
-              current_stroke_number = 0
 
           sample = Sample(tag_code, tag, stroke_number, strokes_samples)
           sample.shrinkPixels()
@@ -129,12 +126,7 @@ class PotIO:
     train_chars = None
     test_chars = None
 
-  def buildInternalRepresentations(self):
-    def buildInternalRepresentation(dic):
-      return
 
-    buildInternalRepresentation(self.train_dict)
-    buildInternalRepresentation(self.test_dict)
 
 
 

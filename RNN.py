@@ -38,7 +38,7 @@ class RNN():
               # pen down stroke
               stroke_rep[0] = [int(stroke_rep[0][0]),int(stroke_rep[0][1]),int(stroke_rep[0][2]),int(stroke_rep[0][3]),1,stroke_rep[0][5]]
               # pen up stroke
-              stroke_rep[-1] = [int(stroke_rep[0][0]),int(stroke_rep[0][1]),int(stroke_rep[0][2]),int(stroke_rep[0][3]),stroke_rep[0][4],1]
+              stroke_rep[-1] = [int(stroke_rep[-1][0]),int(stroke_rep[-1][1]),int(stroke_rep[-1][2]),int(stroke_rep[-1][3]),stroke_rep[-1][4],1]
             new_strokes += stroke_rep
           samples.append(new_strokes)
       return samples,labels
@@ -65,11 +65,13 @@ class RNN():
     print("4 np files read in",time() - start,"seconds")
 
   def show(self,i):
-    for stroke in self.trainset[i]:
+    for stroke in self.train_set[i]:
       if stroke [-2] == 1:
-        new_stroke = [[]]
+        new_stroke = []
       if stroke [-1] == 1:
+        new_stroke.append([stroke[0],stroke[1]])
         plt.plot([x[0] for x in new_stroke],[x[1] for x in new_stroke])
       else:
         new_stroke.append([stroke[0],stroke[1]])
+    plt.show()
 

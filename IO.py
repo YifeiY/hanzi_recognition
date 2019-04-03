@@ -5,7 +5,7 @@ from time import time
 import multiprocessing as mp
 import matplotlib
 from math import cosh
-
+from copy import deepcopy
 import threading
 matplotlib.use("MacOSX")
 
@@ -118,9 +118,9 @@ class PotIO:
       return tag_dict
 
     train_chars = readFile(train_filename)
-    print("read",len(train_chars),"number of train characters")
+    print("read",len(train_chars),"number of train characters.\n")
     test_chars = readFile(test_fileName)
-    print("read",len(test_chars),"number of test characters")
+    print("read",len(test_chars),"number of test characters.\n")
     self.train_dict = organizeByTag(train_chars)
     self.test_dict = organizeByTag(test_chars)
     print("train set character size:",len(self.train_dict.keys()))
@@ -234,7 +234,16 @@ class PotIO:
 
     #return train_dict,test_dict
 
-
+  def shrinkDics(self):
+    '''shrink class size down to 100'''
+    new_keys = list(self.train_dict.keys())[:100]
+    def shrinkDic(dic,keys):
+      new_dic = {}
+      for key in keys:
+        new_dic[key] = dic[key]
+      return new_dic
+    self.train_dict = shrinkDic(self.train_dict,new_keys)
+    self.test_dict = shrinkDic(self.test_dict,new_keys)
 
 
 

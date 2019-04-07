@@ -234,9 +234,9 @@ class PotIO:
 
     #return train_dict,test_dict
 
-  def shrinkDics(self):
-    '''shrink class size down to 100'''
-    new_keys = list(self.train_dict.keys())[:100]
+  def shrinkDics(self,new_size):
+    '''shrink class size down to certain size'''
+    new_keys = list(self.train_dict.keys())[:new_size]
     def shrinkDic(dic,keys):
       new_dic = {}
       for key in keys:

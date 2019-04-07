@@ -1,20 +1,20 @@
 import numpy as np
 from time import time
 from keras.layers import GRU,Bidirectional,Dense,Dropout,AveragePooling1D,Flatten
-from keras.models import Sequential
+from keras.models import Sequential,load_model
 from keras.initializers import Constant
 from matplotlib import pyplot as plt
-
-
+from livelossplot import PlotLossesKeras
 # feature dimension, GRU stack depth, Dense, output classes
 
 data_fixed_length = 100
-number_of_classes = 100 # this is the size of the shrunk dictionary.keys() size in PotIO class in IO.py
-config = [6,100,200,number_of_classes]
+number_of_classes = 50 # this is the size of the shrunk dictionary.keys() size in PotIO class in IO.py
+config = [6,10,50,number_of_classes]
 
-epochs = 60
-batch_size = 1000
+epochs = 10
+batch_size = 64
 
+##net 6: 6-> [100,300,500] -> 100 -> 50
 class RNN():
   train_set = []
   test_set = []
@@ -32,11 +32,14 @@ class RNN():
     print('transforming data')
     self.augumentDataSets()
     self.toNpArrs()
-    model = self.buildRNN()
+    self.model = self.buildRNN()
     print('Starting training')
-    model.fit(self.train_set,self.train_labels,validation_data=(self.test_set,self.test_labels),batch_size=batch_size,epochs = epochs)
-
-
+    self.history = self.model.fit(self.train_set,self.train_labels,validation_data=(self.test_set,self.test_labels),
+              batch_size=batch_size,epochs = epochs,verbose= 1,callbacks=[PlotLossesKeras()])
+    self.model.save("RNNmodel.h5")
+    #self.plotHistory()
+  
+    
   def buildRNN(self):
     input_n = config[0]
     stack_depth = config[1]
@@ -45,16 +48,17 @@ class RNN():
 
     print('Building model')
     model = Sequential()
-    model.add(Bidirectional(GRU(1,input_shape=(data_fixed_length,6),return_sequences=True,bias_initializer=Constant(value=5))))
-    for i in range(stack_depth-2):
-      model.add(Bidirectional(GRU(1,return_sequences=True,bias_initializer=Constant(value=5))))
-    model.add(Bidirectional(GRU(1, return_sequences=True,bias_initializer=Constant(value=5)),merge_mode='sum'))
-    model.add(AveragePooling1D(pool_size=2))
-    model.add(Dropout(0.2))
+    #model.add(Bidirectional(GRU(500,input_shape=(data_fixed_length,6),return_sequences=True)))
+    # for i in range(stack_depth-2):
+    #model.add(Bidirectional(GRU(100,return_sequences=True)))
+
+    model.add(Bidirectional(GRU(100, return_sequences=True),merge_mode='sum'))
+
+    model.add(Bidirectional(GRU(20, return_sequences=True),merge_mode='sum'))
     model.add(Flatten())
-    model.add(Dense(number_of_classes))
+    model.add(Dense(number_of_classes,activation='softmax'))
     print('compiling model')
-    model.compile(optimizer='sgd',loss='sparse_categorical_crossentropy',metrics = ['accuracy'])
+    model.compile(optimizer='adam',loss='sparse_categorical_crossentropy',metrics = ['accuracy'])
     return model
 
   def toNpArrs(self):
@@ -77,7 +81,7 @@ class RNN():
         if len(dataset[i]) > data_fixed_length:
           dataset[i] = dataset[i][:data_fixed_length]
         else:
-          dataset[i] = dataset[i] + [[-1] * 6] * (data_fixed_length - len(dataset[i]))
+          dataset[i] = dataset[i] + [[0] * 6] * (data_fixed_length - len(dataset[i]))
     augumentDataSet(self.train_set)
     augumentDataSet(self.test_set)
 
@@ -148,6 +152,13 @@ class RNN():
           current_index += 1
       return label_dic,{v: k for k, v in label_dic.items()}
     self.l2k,self.k2l = defineDict(self.test_labels)
+    def toClassArray(labels):
+      new_labels = [[]]
+      for l in labels:
+        new_i = [0] * number_of_classes
+        new_i[l] = 1
+        new_labels.append(new_i)
+      return new_labels[1:]
 
     self.train_labels = [self.l2k[i] for i in self.train_labels]
     self.test_labels = [self.l2k[i] for i in self.test_labels]
@@ -165,8 +176,41 @@ class RNN():
         new_stroke.append([stroke[0],stroke[1]])
     plt.show()
 
+  def plotHistory(self):
+    # list all data in history
+    history = self.history
+    print(history.history.keys())
+    # summarize history for accuracy
+    plt.plot(history.history['acc'])
+    plt.plot(history.history['val_acc'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
+    # summarize history for loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.show()
+    
+
+def continueTraining(batch_size, n_epoch):
+  rnn = RNN()
+  rnn.loadInternalRepresentationFiles()
+  print('transforming data')
+  rnn.augumentDataSets()
+  rnn.toNpArrs()
+  print('continue training')
+  model = load_model("RNNmodel.h5")
+  rnn.history = model.fit(rnn.train_set, rnn.train_labels, validation_data=(rnn.test_set, rnn.test_labels),
+            batch_size=batch_size, epochs=n_epoch, verbose=1)
+  model.save("RNNmodel.h5")    
+  rnn.plotHistory()
+
 
 rnn = RNN()
 rnn.exec()
-
-

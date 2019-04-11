@@ -5,3 +5,5 @@ Library used: Keras, numpy
 For optional functionality: matplotlib, livelossplot, struct, threading, multiprocessing
 Accuracy: 95.38%
 Training time: 5 minutes (Intel i5-8259U, 16 GB, macOS Mojave 10.14.4, No dedicated GPU)
+
+IO.py is used to decode .pot files

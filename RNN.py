@@ -4,15 +4,13 @@ from keras.layers import GRU,Bidirectional,Dense,Dropout,AveragePooling1D,Flatte
 from keras.models import Sequential,load_model
 from keras.initializers import Constant
 from matplotlib import pyplot as plt
-from livelossplot import PlotLossesKeras
 # feature dimension, GRU stack depth, Dense, output classes
 
-data_fixed_length = 100
-number_of_classes = 50 # this is the size of the shrunk dictionary.keys() size in PotIO class in IO.py
-config = [6,10,50,number_of_classes]
+data_fixed_length = 100 # this is the fixed length of vectors in a character
+number_of_classes = 3740 # this is the size of the shrunk dictionary.keys() size in PotIO class in IO.py
 
 epochs = 10
-batch_size = 64
+batch_size = 256
 
 ##net 6: 6-> [100,300,500] -> 100 -> 50
 class RNN():
@@ -24,6 +22,7 @@ class RNN():
   # dic['tag'] = [ Sample1: [stroke1: [TVs]]]
 
   def __init__(self):
+    print("initiated RNN object, call ")
     return
 
   def exec(self):
@@ -32,29 +31,21 @@ class RNN():
     print('transforming data')
     self.augumentDataSets()
     self.toNpArrs()
+
     self.model = self.buildRNN()
     print('Starting training')
     self.history = self.model.fit(self.train_set,self.train_labels,validation_data=(self.test_set,self.test_labels),
-              batch_size=batch_size,epochs = epochs,verbose= 1,callbacks=[PlotLossesKeras()])
+              batch_size=batch_size,epochs = epochs,verbose= 1)
     self.model.save("RNNmodel.h5")
+
     #self.plotHistory()
   
     
   def buildRNN(self):
-    input_n = config[0]
-    stack_depth = config[1]
-    dense_n = config[2]
-    classes = config[3]
-
     print('Building model')
     model = Sequential()
-    #model.add(Bidirectional(GRU(500,input_shape=(data_fixed_length,6),return_sequences=True)))
-    # for i in range(stack_depth-2):
-    #model.add(Bidirectional(GRU(100,return_sequences=True)))
-
-    model.add(Bidirectional(GRU(100, return_sequences=True),merge_mode='sum'))
-
-    model.add(Bidirectional(GRU(20, return_sequences=True),merge_mode='sum'))
+    model.add(Bidirectional(GRU(500, return_sequences=True),merge_mode='sum'))
+    model.add(Bidirectional(GRU(300, return_sequences=True),merge_mode='sum'))
     model.add(Flatten())
     model.add(Dense(number_of_classes,activation='softmax'))
     print('compiling model')
@@ -87,11 +78,12 @@ class RNN():
 
 
   def buildInternalRepresentationsFromDic(self,train_dic,test_dic):
+    '''this build representation file from files built by IO.py'''
+    print("building dictionary from  IO class")
     def buildInternalRepresentation(dic):
       labels = []
       samples = [[0]]
       n_keys = len(dic.keys())
-      config[-1] = n_keys
       print("number of keys in dic:",n_keys)
 
       for key in dic.keys():
@@ -118,19 +110,21 @@ class RNN():
 
     self.train_set,self.train_labels = buildInternalRepresentation(train_dic)
     self.test_set,self.test_labels = buildInternalRepresentation(test_dic)
+    print("internal representation has been built, call self.saveInternalRepresentationFiles() to save these representation")
+    print("self.loadInternalRepresentationFiles() will load the saved files to RNN ")
 
   def saveInternalRepresentationFiles(self):
     start = time()
-    print('saving np files...')
+    print('saving representation files...')
     np.save('trainset',self.train_set)
     np.save('trainlabels',self.train_labels)
     np.save('testset', self.test_set)
     np.save('testlabel', self.test_labels)
-    print("4 np files saved in",time() - start,"seconds")
+    print("4 representation files saved in",time() - start,"seconds")
 
   def loadInternalRepresentationFiles(self):
     start = time()
-    print('reading np files...')
+    print('reading representation files...')
     self.train_set = np.load("trainset.npy")
     self.train_labels = np.load('trainlabels.npy')
     self.test_set = np.load('testset.npy')
@@ -139,6 +133,10 @@ class RNN():
     self.convertLabelsToKeys()
     self.train_labels = np.reshape(np.array(self.train_labels),(len(self.train_labels),1))
     self.test_labels = np.reshape(np.array(self.test_labels),(len(self.test_labels),1))
+    print("representation files have been loaded")
+    print("call self.exec() to start training.")
+    print("model configuration can be modified in buildRNN()")
+
 
 
 
@@ -207,9 +205,8 @@ def continueTraining(batch_size, n_epoch):
   print('continue training')
   model = load_model("RNNmodel.h5")
   rnn.history = model.fit(rnn.train_set, rnn.train_labels, validation_data=(rnn.test_set, rnn.test_labels),
-            batch_size=batch_size, epochs=n_epoch, verbose=1)
+            batch_size=batch_size, epochs=n_epoch, verbose=1,callbacks=[PlotLossesKeras()])
   model.save("RNNmodel.h5")    
-  rnn.plotHistory()
 
 
 rnn = RNN()

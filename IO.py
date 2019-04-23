@@ -54,6 +54,7 @@ class PotIO:
 
   def readFiles(self):
     # read train and test data
+    print("Reading files...")
     def readFile(filename):
       global data_buffer
       characters = []
@@ -128,16 +129,12 @@ class PotIO:
 
     train_chars = None
     test_chars = None
-
-
-
-
-
+    print("Finished reading files, call self.shrinkDics(size) to reduce the number of classes")
+    print("Call RNN.buildInternalRepresentationsFromDic(IO.train_dict, IO.test_dict) to load the input to RNN")
 
 
   def makeOptFile(self):
-    '''put each character and its samples to files, prepare multi-thread reading
-    or partial loading of the data sets'''
+    '''legacy - put each character and its samples to files'''
 
     # overview: tag $sample$sample
     # for sample: #strokes#strokes
@@ -172,67 +169,6 @@ class PotIO:
     makeOneOptFile("Train",self.train_dict)
     makeOneOptFile("Test",self.test_dict)
 
-
-
-  def readOptFiles(self):
-
-
-    def readFileBundle(dir):
-      manager = mp.Manager()
-      dic = manager.dict()
-      dic["broken"] = []
-      filelist = os.listdir(dir)
-      processes = []
-      cpu_count = os.cpu_count()
-      list_size = len(filelist)
-      print("size of tags:",list_size)
-      batch_size = list_size//cpu_count + 1
-      end_point = 0
-      for i in range(0,len(filelist),batch_size):
-        filenames = filelist[i:i + batch_size]
-        end_point = i + batch_size
-        processes.append(mp.Process(target=readOneOptFile, args=(dir+"/",filenames,dic)))
-      processes.append(mp.Process(target=readOneOptFile, args=(dir+"/",filelist[end_point:list_size],dic)))
-      print(len(processes))
-      for p in processes[:2]:
-        p.start()
-      for p in processes[:2]:
-        p.join()
-
-
-
-
-
-
-
-    def readOneOptFile(dir,filenames,d):
-      for filename in filenames:
-        f = open(dir + filename, 'r')
-        data = f.read()
-        temp = data.split('$')
-
-        tag_code = temp[0]
-        sample_arr = []
-
-        for sample in temp[1:]:
-          stroke_arr = []
-          for stroke in sample.split('#')[1:]:
-            v_arr = []
-            for v in stroke.split('!')[1:]:
-              v_arr.append([int(x) for x in v.split(',')])
-            stroke_arr.append(v_arr)
-          sample_arr.append(stroke_arr)
-        try:
-          d[filename] = sample_arr
-        except:
-
-          print('filename is ',filename + '\n')
-          # d["broken"].append(filename)
-
-    self.test_dict = readFileBundle(opt_file_dir + "Test")
-    #self.train_dict = readFileBundle(opt_file_dir + "Train")
-
-    #return train_dict,test_dict
 
   def shrinkDics(self,new_size):
     '''shrink class size down to certain size'''
